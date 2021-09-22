@@ -110,17 +110,20 @@ static int v4l2_probe_driver(V4L2m2mContext *s)
     if (ret < 0)
         goto done;
 
-    ret = ff_v4l2_context_get_format(&s->output, 1);
-    if (ret) {
-        av_log(log_ctx, AV_LOG_DEBUG, "v4l2 output format not supported\n");
-        goto done;
-    }
 
-    ret = ff_v4l2_context_get_format(&s->capture, 1);
-    if (ret) {
-        av_log(log_ctx, AV_LOG_DEBUG, "v4l2 capture format not supported\n");
-        goto done;
-    }
+    ret = ff_v4l2_get_format_venus(&s->output);
+//    ret = ff_v4l2_context_get_format(&s->output, 1);
+//    if (ret) {
+//        av_log(log_ctx, AV_LOG_DEBUG, "v4l2 output format not supported\n");
+//        goto done;
+//    }
+
+    ret = ff_v4l2_get_format_venus(&s->capture);
+//    ret = ff_v4l2_context_get_format(&s->capture, 1);
+//    if (ret) {
+//        av_log(log_ctx, AV_LOG_DEBUG, "v4l2 capture format not supported\n");
+//        goto done;
+//    }
 
 done:
     if (close(s->fd) < 0) {
@@ -157,15 +160,15 @@ static int v4l2_configure_contexts(V4L2m2mContext *s)
                                                cfmt.fmt.pix_mp.pixelformat :
                                                cfmt.fmt.pix.pixelformat));
 
-    ret = ff_v4l2_context_set_format(&s->output);
-    if (ret) {
-        av_log(log_ctx, AV_LOG_ERROR, "can't set v4l2 output format\n");
-        goto error;
-    }
-
     ret = ff_v4l2_context_set_format(&s->capture);
     if (ret) {
         av_log(log_ctx, AV_LOG_ERROR, "can't to set v4l2 capture format\n");
+        goto error;
+    }
+
+    ret = ff_v4l2_context_set_format(&s->output);
+    if (ret) {
+        av_log(log_ctx, AV_LOG_ERROR, "can't set v4l2 output format\n");
         goto error;
     }
 
@@ -376,7 +379,7 @@ int ff_v4l2_m2m_codec_init(V4L2m2mPriv *priv)
 
     for (entry = readdir(dirp); entry; entry = readdir(dirp)) {
 
-        if (strncmp(entry->d_name, "video", 5))
+        if (strncmp(entry->d_name, "video33", 7))
             continue;
 
         snprintf(s->devname, sizeof(s->devname), "/dev/%s", entry->d_name);

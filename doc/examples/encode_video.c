@@ -34,6 +34,7 @@
 #include <libavcodec/avcodec.h>
 
 #include <libavutil/opt.h>
+#include <libavutil/log.h>
 #include <libavutil/imgutils.h>
 
 static void encode(AVCodecContext *enc_ctx, AVFrame *frame, AVPacket *pkt,
@@ -122,6 +123,8 @@ int main(int argc, char **argv)
 
     if (codec->id == AV_CODEC_ID_H264)
         av_opt_set(c->priv_data, "preset", "slow", 0);
+
+    av_log_set_level(AV_LOG_TRACE);
 
     /* open it */
     ret = avcodec_open2(c, codec, NULL);

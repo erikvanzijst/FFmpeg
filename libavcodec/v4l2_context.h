@@ -112,6 +112,15 @@ int ff_v4l2_context_init(V4L2Context* ctx);
 int ff_v4l2_context_set_format(V4L2Context* ctx);
 
 /**
+ * Hack to skip dynamic pixel format negotiation through `ioctl(VIDIOC_TRY_FMT)` which Qualcomm
+ * doesn't support. Instead, just set `ctx->av_pix_fmt = AV_PIX_FMT_YUV420P`.
+ *
+ * @param[in] ctx A pointer to a V4L2Context. See V4L2Context description for required variables.
+ * @return 0 in case of success, a negative value representing the error otherwise.
+ */
+int ff_v4l2_get_format_venus(V4L2Context* ctx);
+
+/**
  * Queries the driver for a valid v4l2 format and copies it to the context.
  *
  * @param[in] ctx A pointer to a V4L2Context. See V4L2Context description for required variables.

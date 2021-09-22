@@ -29,6 +29,7 @@
 #include <poll.h>
 #include "libavcodec/avcodec.h"
 #include "libavcodec/internal.h"
+#include "libavcodec/v4l2_context.h"
 #include "v4l2_buffers.h"
 #include "v4l2_fmt.h"
 #include "v4l2_m2m.h"
@@ -476,7 +477,7 @@ static int v4l2_release_buffers(V4L2Context* ctx)
 static inline int v4l2_try_raw_format(V4L2Context* ctx, enum AVPixelFormat pixfmt)
 {
     struct v4l2_format *fmt = &ctx->format;
-    uint32_t v4l2_fmt;
+    uint32_t v4l2_fmt; /* fourcc code */
     int ret;
 
     v4l2_fmt = ff_v4l2_format_avfmt_to_v4l2(pixfmt);
@@ -507,9 +508,12 @@ static int v4l2_get_raw_format(V4L2Context* ctx, enum AVPixelFormat *p)
     fdesc.type = ctx->type;
 
     if (pixfmt != AV_PIX_FMT_NONE) {
+        av_log(NULL, AV_LOG_DEBUG, "v4l2: v4l2_get_raw_format()\n");
         ret = v4l2_try_raw_format(ctx, pixfmt);
-        if (!ret)
+        if (!ret) {
+            av_log(NULL, AV_LOG_VERBOSE, "v4l2: failed to set the codec's pixfmt %d: %d\n", ff_v4l2_format_avfmt_to_v4l2(pixfmt), ret);
             return 0;
+        }
     }
 
     for (;;) {
@@ -673,12 +677,38 @@ int ff_v4l2_context_dequeue_packet(V4L2Context* ctx, AVPacket* pkt)
     return ff_v4l2_buffer_buf_to_avpkt(pkt, avbuf);
 }
 
+int ff_v4l2_get_format_venus(V4L2Context* ctx)
+{
+    struct v4l2_format_update fmt;
+
+    if (ctx->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
+        av_log(NULL, AV_LOG_DEBUG, "v4l2: configuring V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE as V4L2_PIX_FMT_H264\n");
+        fmt.update_avfmt = 1;
+        fmt.update_v4l2 = 1;
+        fmt.av_fmt = AV_PIX_FMT_NONE;
+        fmt.v4l2_fmt = V4L2_PIX_FMT_H264;
+
+    } else if (ctx->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+        av_log(NULL, AV_LOG_DEBUG, "v4l2: configuring V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE as V4L2_PIX_FMT_NV12\n");
+        fmt.update_avfmt = 1;
+        fmt.update_v4l2 = 1;
+        fmt.av_fmt = AV_PIX_FMT_NV12;
+        fmt.v4l2_fmt = V4L2_PIX_FMT_NV12;
+        ctx->format.fmt.pix_mp.colorspace = V4L2_COLORSPACE_470_SYSTEM_BG;
+    }
+
+    v4l2_save_to_context(ctx, &fmt);
+
+    return 0;
+}
+
 int ff_v4l2_context_get_format(V4L2Context* ctx, int probe)
 {
     struct v4l2_format_update fmt = { 0 };
     int ret;
 
     if  (ctx->av_codec_id == AV_CODEC_ID_RAWVIDEO) {
+        av_log(NULL, AV_LOG_DEBUG, "Getting raw format: v4l2: ctx->av_codec_id == AV_CODEC_ID_RAWVIDEO\n");
         ret = v4l2_get_raw_format(ctx, &fmt.av_fmt);
         if (ret)
             return ret;
